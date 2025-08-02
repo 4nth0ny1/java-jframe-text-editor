@@ -1,4 +1,3 @@
-
 package com.editor;
 
 import javax.swing.*;
@@ -15,6 +14,8 @@ public class TextEditorApp {
     private JTextArea textArea;
     private JFileChooser fileChooser;
     private FileHandler fileHandler;
+    private JTree fileTree;
+    private DefaultTreeModel treeModel;
 
     public TextEditorApp() {
         System.out.println("Launching editor...");
@@ -40,15 +41,11 @@ public class TextEditorApp {
 
         JScrollPane textScroll = new JScrollPane(textArea);
 
-        FileSystemView fsv = fileChooser.getFileSystemView();
-        File rootFile = fsv.getHomeDirectory();
-
-        DefaultMutableTreeNode rootNode = new DefaultMutableTreeNode(new FileNode(rootFile));
-        addDummyNode(rootNode);
-
-        JTree fileTree = new JTree(rootNode);
-        fileTree.setRootVisible(true);
-        fileTree.expandRow(0);
+        // Start with an empty root
+        DefaultMutableTreeNode emptyRoot = new DefaultMutableTreeNode();
+        treeModel = new DefaultTreeModel(emptyRoot);
+        fileTree = new JTree(treeModel);
+        fileTree.setRootVisible(false);
 
         fileTree.addTreeWillExpandListener(new TreeWillExpandListener() {
             @Override
@@ -122,6 +119,7 @@ public class TextEditorApp {
                         fileHandler.writeFile(fileChooser.getSelectedFile(), textArea.getText());
                         openedFile = fileChooser.getSelectedFile();
                         updateTitle();
+                        showDirectoryInTree(openedFile.getParentFile());
                     }
                 }
             }
@@ -130,6 +128,21 @@ public class TextEditorApp {
 
     private void addDummyNode(DefaultMutableTreeNode node) {
         node.add(new DefaultMutableTreeNode("Loading..."));
+    }
+
+    private void showDirectoryInTree(File directory) {
+        DefaultMutableTreeNode root = new DefaultMutableTreeNode(new FileNode(directory));
+        File[] files = directory.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                DefaultMutableTreeNode child = new DefaultMutableTreeNode(new FileNode(file));
+                if (file.isDirectory()) addDummyNode(child);
+                root.add(child);
+            }
+        }
+        treeModel.setRoot(root);
+        fileTree.setRootVisible(true);
+        fileTree.expandRow(0);
     }
 
     private JMenuBar createMenuBar() {
@@ -153,6 +166,7 @@ public class TextEditorApp {
                 String content = fileHandler.readFile(openedFile);
                 textArea.setText(content);
                 updateTitle();
+                showDirectoryInTree(openedFile.getParentFile());
             }
         });
 
@@ -170,6 +184,7 @@ public class TextEditorApp {
                 openedFile = fileChooser.getSelectedFile();
                 fileHandler.writeFile(openedFile, textArea.getText());
                 updateTitle();
+                showDirectoryInTree(openedFile.getParentFile());
             }
         });
 
